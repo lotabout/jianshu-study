@@ -40,6 +40,8 @@ def get_articles(soup):
             article['author'] = author.text
             article['author_url'] = author['href']
 
+            article['shared_time'] = sp.select('span.time')[0]['data-shared-at']
+
             text = sp.select('.list-footer')[0].text
             for (idx, regex) in meta:
                 tmp = regex.search(text)
@@ -63,7 +65,7 @@ def get_next_url(soup):
     except:
         return None
 
-def extract_content(url):
+def extract_article_list(url):
     main_page = bot.get(main_url + url)
     sp_main = BeautifulSoup(main_page.content, 'html.parser')
     articles = get_articles(sp_main)
@@ -91,7 +93,7 @@ class Crawler():
         c = self.conn.cursor()
         # create table if needed
         c.execute('''CREATE TABLE IF NOT EXISTS articles
-        (url text, title text, author text, author_url text, read num, comment num, like num, paid num)''')
+        (url text, title text, shared_time text, author text, author_url text, read num, comment num, like num, paid num)''')
         self.conn.commit()
         c.execute('''CREATE TABLE IF NOT EXISTS content
         (url text, html_content text, text_content text)''')
@@ -104,9 +106,9 @@ class Crawler():
         self.conn.commit()
 
     def save_article(self, info, content):
-        self.cursor.execute('INSERT into articles VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
-                (info['url'], info['title'], info['author'], info['author_url'], info['read'],
-                    info['comment'], info['like'], info['paid']))
+        self.cursor.execute('INSERT into articles VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (info['url'], info['title'], info['shared_time'], info['author'], info['author_url'],
+                    info['read'], info['comment'], info['like'], info['paid']))
         self.conn.commit()
 
         html_content = content if content else ''
@@ -149,7 +151,7 @@ def main():
 
     for i in range(max_page):
         print('Iteration: ', i)
-        (articles, next_url) = extract_content(next_url)
+        (articles, next_url) = extract_article_list(next_url)
         crawler.save_articles(articles)
         time.sleep(1)
 
