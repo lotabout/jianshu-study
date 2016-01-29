@@ -89,11 +89,13 @@ def extract_article(url):
 
 class Crawler():
     def __init__(self, db_file):
+        self.category = '-1'
         self.conn = sqlite3.connect(db_file)
         c = self.conn.cursor()
         # create table if needed
         c.execute('''CREATE TABLE IF NOT EXISTS articles
-        (url text, title text, shared_time text, author text, author_url text, read num, comment num, like num, paid num)''')
+        (url text, title text, shared_time text, category text,
+            author text, author_url text, read num, comment num, like num, paid num)''')
         self.conn.commit()
         c.execute('''CREATE TABLE IF NOT EXISTS content
         (url text, html_content text, text_content text)''')
@@ -106,9 +108,9 @@ class Crawler():
         self.conn.commit()
 
     def save_article(self, info, content):
-        self.cursor.execute('INSERT into articles VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        self.cursor.execute('INSERT into articles VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (info['url'], info['title'], info['shared_time'], info['author'], info['author_url'],
-                    info['read'], info['comment'], info['like'], info['paid']))
+                    self.category, info['read'], info['comment'], info['like'], info['paid']))
         self.conn.commit()
 
         html_content = content if content else ''
@@ -138,16 +140,22 @@ class Crawler():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--max', type=int, default = 15, help = 'max page')
-    parser.add_argument('-u', '--start_url', type=str, default = '/recommendations/notes', help = 'start url')
+    parser.add_argument('-u', '--start_url', type=str, help = 'start url')
     parser.add_argument('-d', '--db_file', type=str, default = 'jianshu.db', help = 'start url')
+    parser.add_argument('-c', '--category', type=str, default='56', help = 'category id, such as 56')
 
     args = parser.parse_args()
 
-    next_url = args.start_url
     max_page = args.max
     db_file = args.db_file
-
     crawler = Crawler(db_file)
+
+    if args.category:
+        next_url = '/recommendations/notes?category_id='+args.category
+        crawler.category = args.category
+
+    if args.start_url:
+        next_url = args.start_url
 
     for i in range(max_page):
         print('Iteration: ', i)
